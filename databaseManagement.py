@@ -39,3 +39,9 @@ class Sample(Model):
 
 	class Meta:
 		database = db # This model uses the "people.db" database.
+
+
+
+
+Odense = CitySample(cityID = 0)
+Odense.save()
