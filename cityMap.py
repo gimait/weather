@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 import json
+import argparse
 import pymongo as pm
 
 example = {
@@ -15,7 +16,6 @@ example = {
 }
 VERBOSE = True
 
-file = "/home/gimait/Downloads/city.list.json"
 asturias = ((43.67, -7.26), (42.87, -4.49))
 sydney = ((-32.472695, 150.222610), (-35.056980, 152.584333))
 max_cities = 1500
@@ -51,6 +51,19 @@ def get_cities_in_area(coordinates, json_file):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("city_list",
+                        help="File with all cities in owm",
+                        default="city.list.json")
+    parser.add_argument("-coord", nargs=4,
+                        help="Points delimiting a square where cities will be located",
+                        default=None)
+    args = parser.parse_args()
+    file = args.city_list
+    if args.coord:
+        # TODO: get coordinates from argument
+        print(args.coord)
+
     client = pm.MongoClient()
     db = client['city_list']
     cities = db.cities
@@ -66,7 +79,6 @@ def main():
             return
 
         cities.insert_many(all_cities)
-
 
 
 if __name__ == '__main__':
