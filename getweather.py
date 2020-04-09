@@ -92,20 +92,3 @@ for cityQuery in cityQuerys :
 
 	print(sampleJSON)
 	sample.save()
-
-  
-
-	#print(w.get_temperature('celsius'))                      # <Weather - reference time=2013-12-18 09:20,
-							  # status=Clouds>
-
-# Weather details
-# w.get_wind()                  # {'speed': 4.6, 'deg': 330}
-# w.get_humidity()              # 87
-# w.get_temperature('celsius')  # {'temp_max': 10.5, 'temp': 9.7, 'temp_min': 9.0}
-
-# Search current weather observations in the surroundings of
-# lat=22.57W, lon=43.12S (Rio de Janeiro, BR)
-# observation_list = owm.weather_around_coords(0, 0)
-# print(observation_list)
-# w = observation_list[0].get_weather()
-# print(w.get_temperature('celsius'))                      # <Weather - reference time=2013-12-18 09:20,
