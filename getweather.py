@@ -2,6 +2,12 @@
 import argparse
 import requests
 import pymongo as pm
+import subprocess
+
+
+def is_disk_full():
+	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
+	return True if int(percent_str[:-2]) < 80 else False
 
 
 def reset_city_list(client):
@@ -68,6 +74,10 @@ def main():
 	client = pm.MongoClient()
 	if args.new_sample:
 		reset_city_list(client)
+		return
+
+	if is_disk_full():
+		print("disk full!")
 		return
 
 	api_key = 'da5438549b419b84ea6890de543fb25c'  # a valid API key
