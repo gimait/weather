@@ -7,7 +7,7 @@ import subprocess
 
 def is_disk_full():
 	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
-	return True if int(percent_str[:-2]) < 80 else False
+	return True if int(percent_str[:-2]) > 80 else False
 
 
 def reset_city_list(client):
@@ -55,9 +55,9 @@ def sample_cities(client, key, n=50):
 	cities_to_check = get_list_to_check(client)
 	if len(cities_to_check) <= 0:
 		return
-	for i in range(50):
+	for i in range(n):
 		if len(cities_to_check) <= 0:
-			update_city_to_check({})
+			update_city_to_check(client, {})
 			return
 		sample = get_sample_by_id(cities_to_check.pop(0)["id"], key)
 		client['weather'].samples.insert_one(sample)
@@ -81,7 +81,7 @@ def main():
 		return
 
 	api_key = 'da5438549b419b84ea6890de543fb25c'  # a valid API key
-	sample_cities(client, api_key, 1)
+	sample_cities(client, api_key)
 
 
 if __name__ == '__main__':
