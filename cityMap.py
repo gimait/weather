@@ -4,18 +4,7 @@ import json
 import argparse
 import pymongo as pm
 
-example = {
-    "id": 833,
-    "name": "Ḩeşār-e Sefīd",
-    "state": "",
-    "country": "IR",
-    "coord": {
-        "lon": 47.159401,
-        "lat": 34.330502
-    }
-}
-VERBOSE = True
-
+VERBOSE = False
 asturias = ((43.67, -7.26), (42.87, -4.49))
 sydney = ((-32.472695, 150.222610), (-35.056980, 152.584333))
 max_cities = 1500
@@ -68,17 +57,24 @@ def main():
     db = client['city_list']
     cities = db.cities
     #Clear all cities:
+    print("Clearing old configuration..")
     cities.delete_many({})
+    print("Done.")
+
     with open(file) as f:
         cl = json.load(f)
+        print("Loading cities from file..")
         asturias_list = get_cities_in_area(asturias, cl)
         sydney_list = get_cities_in_area(sydney, cl)
         all_cities = asturias_list + sydney_list
+        print("Done.")
         if max_cities < len(all_cities):
-            print("too many cities, reduce area..")
+            print("too many cities, reduce area!!")
             return
 
+        print("Saving selected cities..")
         cities.insert_many(all_cities)
+        print("Done.")
 
 
 if __name__ == '__main__':
