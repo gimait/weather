@@ -54,12 +54,8 @@ def main():
         print(args.coord)
 
     client = pm.MongoClient()
-    db = client['city_list']
+    db = client['weather']
     cities = db.cities
-    #Clear all cities:
-    print("Clearing old configuration..")
-    cities.delete_many({})
-    print("Done.")
 
     with open(file) as f:
         cl = json.load(f)
@@ -71,7 +67,10 @@ def main():
         if max_cities < len(all_cities):
             print("too many cities, reduce area!!")
             return
-
+        # Clear all cities:
+        print("Clearing old configuration..")
+        cities.delete_many({})
+        print("Done.")
         print("Saving selected cities..")
         cities.insert_many(all_cities)
         print("Done.")
