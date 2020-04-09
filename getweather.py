@@ -1,111 +1,88 @@
-#!/usr/bin/env python
-# encoding: utf-8
+#!/usr/bin/env python3
+import argparse
+import requests
+import pymongo as pm
+import subprocess
 
-import pyowm
-import json
-import weather_dbManagement as dbm
 
-owm = pyowm.OWM('da5438549b419b84ea6890de543fb25c')  # a valid API key
+def is_disk_full():
+	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
+	return True if int(percent_str[:-2]) < 80 else False
 
-dbm.db.create_tables([dbm.Cities, dbm.Sample])
 
-UPDATE_TABLES = True
-if UPDATE_TABLES:
-	file = "/home/gimait/workspace/code/scripts/python/weather/selected_list.txt"
-	dbm.update_cityTable(file)
+def reset_city_list(client):
+	city_db = client['weather']
+	city_db.to_check.delete_many({})
+	city_list = get_city_list(client)
+	city_db.to_check.insert_many(city_list)
 
-cityQuerys = dbm.Cities.select()
-justOnce = True
-for cityQuery in cityQuerys :
 
-	observation = owm.weather_at_id(cityQuery.cityID)
-	w = observation.get_weather()
-	sampleJSON = json.loads(w.to_JSON())
+def update_city_to_check(client, cities):
+	city_db = client['weather']
+	city_db.to_check.delete_many({})
+	city_db.to_check.insert_many(cities)
 
-	sample = dbm.Sample(originCity = cityQuery.cityID, reference_time = sampleJSON['reference_time'])
 
-	if sampleJSON['status'] and (sampleJSON['status'] != None):
-		sample.status = sampleJSON['status']
+def get_city_list(client):
+	city_list = []
+	cities = client['weather'].cities
+	for ex in cities.find({}):
+		city_list.append({"id": ex['id']})
+	return city_list
 
-	if sampleJSON['detailed_status'] and (sampleJSON['detailed_status'] != None):
-		sample.detailed_status = sampleJSON['detailed_status'] 
 
-	if sampleJSON['temperature']['temp'] and (sampleJSON['temperature']['temp'] != None):
-		sample.temp = sampleJSON['temperature']['temp']
+def get_list_to_check(client):
+	client['weather'].to_check.find({})
+	city_ids = []
+	to_check = client['weather'].to_check
+	for ex in to_check.find({}):
+		city_ids.append({"id": ex['id']})
+	return city_ids
 
-	if sampleJSON['temperature']['temp_min'] and (sampleJSON['temperature']['temp_min'] != None):
-		sample.temp_min = sampleJSON['temperature']['temp_min'] 
 
-	if sampleJSON['temperature']['temp_max'] and (sampleJSON['temperature']['temp_max'] != None):
-		sample.temp_max = sampleJSON['temperature']['temp_max'] 
+def get_coordinates_by_id(client, id):
+	query = client['weather'].cities.find_one({"id": id})
+	return query['lat'], query['lon']
 
-	if sampleJSON['temperature']['temp_kf'] and (sampleJSON['temperature']['temp_kf'] != None):
-		sample.temp_kf = sampleJSON['temperature']['temp_kf']
 
-	if sampleJSON['humidity'] and (sampleJSON['humidity'] != None):
-		sample.humidity = sampleJSON['humidity'] 
+def get_sample_by_id(id, api_key):
+	url = "https://api.openweathermap.org/data/2.5/weather?id={}&units=metric&appid={}".format(id, api_key)
+	r = requests.get(url)
+	return r.json()
 
-	if sampleJSON['pressure']['press'] and (sampleJSON['pressure']['press'] != None):
-		sample.press = sampleJSON['pressure']['press'] 
 
-	if sampleJSON['wind']['speed'] and (sampleJSON['wind']['speed'] != None):
-		sample.wind_speed = sampleJSON['wind']['speed'] 
+def sample_cities(client, key, n=50):
+	cities_to_check = get_list_to_check(client)
+	if len(cities_to_check) <= 0:
+		return
+	for i in range(50):
+		if len(cities_to_check) <= 0:
+			update_city_to_check({})
+			return
+		sample = get_sample_by_id(cities_to_check.pop(0)["id"], key)
+		client['weather'].samples.insert_one(sample)
 
-	if sampleJSON['wind']['deg'] and (sampleJSON['wind']['deg'] != None):
-		sample.wind_deg = sampleJSON['wind']['deg']
+	update_city_to_check(client, cities_to_check)
 
-	if sampleJSON['clouds'] and (sampleJSON['clouds'] != None):
-		sample.clouds = sampleJSON['clouds'] 
 
-	if sampleJSON['rain']['3h'] and (sampleJSON['rain']['3h'] != None):
-		sample.rain = sampleJSON['rain']['3h'] 
+def main():
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-n", "--new-sample",
+						help="A new sample will be measured",
+						action='store_true')
+	args = parser.parse_args()
+	client = pm.MongoClient()
+	if args.new_sample:
+		reset_city_list(client)
+		return
 
-	if sampleJSON['snow'] and (sampleJSON['snow'] != None):
-		sample.snow = sampleJSON['snow'] 
+	if is_disk_full():
+		print("disk full!")
+		return
 
-	if sampleJSON['visibility_distance'] and (sampleJSON['visibility_distance'] != None):
-		sample.visibility_distance = sampleJSON['visibility_distance']
+	api_key = 'da5438549b419b84ea6890de543fb25c'  # a valid API key
+	sample_cities(client, api_key, 1)
 
-	if sampleJSON['sunrise_time'] and (sampleJSON['sunrise_time'] != None):
-		sample.sunrise_time = sampleJSON['sunrise_time'] 
 
-	if sampleJSON['sunset_time'] and (sampleJSON['sunset_time'] != None):
-		sample.sunset_time = sampleJSON['sunset_time'] 
-
-	if sampleJSON['dewpoint'] and (sampleJSON['dewpoint'] != None):
-		sample.dewpoint = sampleJSON['dewpoint']
-
-	if sampleJSON['weather_code'] and (sampleJSON['weather_code'] != None):
-		sample.weather_code = sampleJSON['weather_code'] 
-
-	if sampleJSON['humidex'] and (sampleJSON['humidex'] != None):
-		sample.humidex = sampleJSON['humidex'] 
-
-	if sampleJSON['pressure']['sea_level'] and (sampleJSON['pressure']['sea_level'] != None):
-		sample.sea_level = sampleJSON['pressure']['sea_level']
-
-	if sampleJSON['heat_index'] and (sampleJSON['heat_index'] != None):
-		sample.heat_index = sampleJSON['heat_index'] 
-
-	if sampleJSON['weather_icon_name'] and (sampleJSON['weather_icon_name'] != None):
-		sample.weather_icon_name = sampleJSON['weather_icon_name']
-
-	print(sampleJSON)
-	sample.save()
-
-  
-
-	#print(w.get_temperature('celsius'))                      # <Weather - reference time=2013-12-18 09:20,
-							  # status=Clouds>
-
-# Weather details
-# w.get_wind()                  # {'speed': 4.6, 'deg': 330}
-# w.get_humidity()              # 87
-# w.get_temperature('celsius')  # {'temp_max': 10.5, 'temp': 9.7, 'temp_min': 9.0}
-
-# Search current weather observations in the surroundings of
-# lat=22.57W, lon=43.12S (Rio de Janeiro, BR)
-# observation_list = owm.weather_around_coords(0, 0)
-# print(observation_list)
-# w = observation_list[0].get_weather()
-# print(w.get_temperature('celsius'))                      # <Weather - reference time=2013-12-18 09:20,
+if __name__ == '__main__':
+	main()
