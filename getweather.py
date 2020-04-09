@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-# encoding: utf-8
+#!/usr/bin/env python3
 import argparse
-import json
 import requests
 import pymongo as pm
 
