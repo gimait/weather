@@ -3,11 +3,18 @@ import argparse
 import requests
 import pymongo as pm
 import subprocess
-
+import telepot
 
 def is_disk_full():
 	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
 	return True if int(percent_str[:-2]) > 80 else False
+
+
+def report_disk_usage():
+	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
+	percent_str = "Disk usage: " + percent_str
+	bot = telepot.Bot('1297382354:AAECpBd2TseprNSrOHoeH43bZ-Rbw2HvYxc')
+	bot.sendMessage('903059496', percent_str)
 
 
 def reset_city_list(client):
@@ -74,6 +81,7 @@ def main():
 	client = pm.MongoClient()
 	if args.new_sample:
 		reset_city_list(client)
+		report_disk_usage()
 		return
 
 	if is_disk_full():
