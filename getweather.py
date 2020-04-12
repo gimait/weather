@@ -96,7 +96,7 @@ def main():
 		return
 
 	api_key = 'da5438549b419b84ea6890de543fb25c'  # a valid API key
-	sample_cities(client, api_key, 1)
+	sample_cities(client, api_key)
 
 
 if __name__ == '__main__':
