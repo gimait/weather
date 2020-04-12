@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import requests
-from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 import pymongo as pm
 import subprocess
 import telepot
@@ -9,7 +9,10 @@ import telepot
 
 def is_disk_full():
 	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
-	return True if int(percent_str[:-2]) > 80 else False
+	if percent_str:
+		return True if int(percent_str[:-2]) > 80 else False
+	else:
+		return False
 
 
 def report_disk_usage():
@@ -69,9 +72,8 @@ def sample_cities(client, key, n=50):
 		sample = get_sample_by_id(city["id"], key)
 		client['weather'].samples.insert_one(sample)
 
-	with Pool(10) as pool:
+	with ThreadPool(10) as pool:
 		pool.map(sampler, cities_to_check[0:n])
-		pool.join()
 		del cities_to_check[0:n]
 
 	update_city_to_check(client, cities_to_check)
