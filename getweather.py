@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import requests
+from multiprocessing import Pool
 import pymongo as pm
 import subprocess
 import telepot
+
 
 def is_disk_full():
 	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
@@ -62,12 +64,15 @@ def sample_cities(client, key, n=50):
 	cities_to_check = get_list_to_check(client)
 	if len(cities_to_check) <= 0:
 		return
-	for i in range(n):
-		if len(cities_to_check) <= 0:
-			update_city_to_check(client, {})
-			return
-		sample = get_sample_by_id(cities_to_check.pop(0)["id"], key)
+
+	def sampler(city):
+		sample = get_sample_by_id(city["id"], key)
 		client['weather'].samples.insert_one(sample)
+
+	with Pool(10) as pool:
+		pool.map(sampler, cities_to_check[0:n])
+		pool.join()
+		del cities_to_check[0:n]
 
 	update_city_to_check(client, cities_to_check)
 
@@ -89,7 +94,7 @@ def main():
 		return
 
 	api_key = 'da5438549b419b84ea6890de543fb25c'  # a valid API key
-	sample_cities(client, api_key)
+	sample_cities(client, api_key, 1)
 
 
 if __name__ == '__main__':
