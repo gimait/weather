@@ -2,17 +2,35 @@
 import argparse
 import requests
 from multiprocessing.pool import ThreadPool
+from datetime import datetime
 import pymongo as pm
 import subprocess
 import telepot
 
 
-def is_disk_full():
+def is_disk_full(percentage=80):
 	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
 	if percent_str:
-		return True if int(percent_str[:-2]) > 80 else False
+		return True if int(percent_str[:-2]) > percentage else False
 	else:
 		return False
+
+
+def report_disk_fill_rate(client):
+	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
+	percent_str = "Disk usage: " + percent_str
+	collection = client['weather'].samples
+	first_time = collection.find_one()['dt']
+	last_time = collection.find_one({"$query": {}, "$orderby": {"_id": -1}})['dt']
+	readable_first = datetime.utcfromtimestamp(first_time).strftime('%Y-%m-%d %H:%M:%S')
+	readable_second = datetime.utcfromtimestamp(last_time).strftime('%Y-%m-%d %H:%M:%S')
+	difference = last_time-first_time
+	percent_str += '\nDisk half capacity, time since first log:'
+	percent_str += str(difference)
+	bot = telepot.Bot('1297382354:AAECpBd2TseprNSrOHoeH43bZ-Rbw2HvYxc')
+	bot.sendMessage('903059496', percent_str)
+	percent_str = 'first log date: ' + readable_first + '\nlast log date: ' + readable_second
+	bot.sendMessage('903059496', percent_str)
 
 
 def report_disk_usage():
@@ -94,6 +112,9 @@ def main():
 	if is_disk_full():
 		print("disk full!")
 		return
+
+	if is_disk_full(50):
+		report_disk_fill_rate(client)
 
 	api_key = 'da5438549b419b84ea6890de543fb25c'  # a valid API key
 	sample_cities(client, api_key)
