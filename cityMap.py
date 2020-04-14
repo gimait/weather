@@ -3,13 +3,17 @@ import json
 import argparse
 import pymongo as pm
 
-VERBOSE = False
 asturias = ((43.67, -7.26), (42.87, -4.49))
 sydney = ((-32.472695, 150.222610), (-35.056980, 152.584333))
 max_cities = 1500
 
 
 def sort_coordinates(coord):
+    """
+    Translates the pair of coordinate points to latitude and longitude limits
+    :param coord: Pair of coordinate points, with shape ((lat1, lon1), (lat2, lon2))
+    :return: [[max_lat, min_lat], [max_lon, min_lon]]
+    """
     p1 = coord[0]
     p2 = coord[1]
     if p1[0] > p2[0]:
@@ -25,14 +29,18 @@ def sort_coordinates(coord):
 
 
 def get_cities_in_area(coordinates, json_file):
+    """
+    Given the coordinates of two points, finds all cities within these coordinates
+    :param coordinates: Pair of coordinate points, with shape ((lat1, lon1), (lat2, lon2))
+    :param json_file: json object containing information about all available cities to search
+    :return: list of cities within the given coordinate limits
+    """
     cities = []
     limits = sort_coordinates(coordinates)
     for city in json_file:
         lon = city['coord']['lon']
         lat = city['coord']['lat']
         if limits[0][0] > lat > limits[0][1] and limits[1][0] > lon > limits[1][1]:
-            if VERBOSE:
-                print(city["name"])
             cities.append(city)
 
     return cities
