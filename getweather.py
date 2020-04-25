@@ -147,6 +147,11 @@ class WeatherDbManager:
 		:return:
 		"""
 		cities_to_check = self.get_list_to_check()
+		# If there is too little entries, get the full list and set it up again
+		if len(cities_to_check) < n:
+			cities_to_check += self.get_city_list()
+			self.update_city_to_check(cities_to_check)
+		# If it's anyways empty, leave
 		if len(cities_to_check) <= 0:
 			return
 
