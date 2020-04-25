@@ -1,0 +1,39 @@
+{
+'weather': [
+	{	
+		'id': 802, 
+		'main': 'Clouds', 
+		'description': 'scattered clouds', 
+		'icon': '03d'
+	}
+], 
+'base': 'stations', 
+'main': {
+	'temp': 14.08, 
+	'feels_like': 13.9, 
+	'temp_min': 12.78, 
+	'temp_max': 16.67, 
+	'pressure': 1017, 
+	'humidity': 100
+}, 
+'visibility': 9000, 
+'wind': {
+	'speed': 2.1, 
+	'deg': 120
+}, 
+'clouds': {
+	'all': 40
+}, 
+'dt': 1586424414, 
+'sys': {
+	'type': 1, 
+	'id': 6388, 
+	'country': 'ES', 
+	'sunrise': 1586411408, 
+	'sunset': 1586458741
+}, 
+'timezone': 7200, 
+'id': 3104334, 
+'name': 'Zanzabornín', 
+'cod': 200
+}

@@ -176,7 +176,7 @@ def main():
 	db_manager = WeatherDbManager(client)
 
 	if args.new_sample:
-		db_manager.reset_city_list()
+		#db_manager.reset_city_list()
 		report_disk_usage()
 		if is_disk_full(50):
 			report_disk_fill_rate(client)
