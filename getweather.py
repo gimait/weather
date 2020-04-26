@@ -55,7 +55,7 @@ def report_disk_fill_rate(db_client):
 		bot.sendMessage(chat_id, percent_str)
 
 
-def report_disk_usage():
+def report_disk_usage(stats):
 	"""
 	Sends message with disk use percentage.
 	:return:
@@ -63,7 +63,9 @@ def report_disk_usage():
 	bot_id = os.getenv('BOT_CLIENT')
 	chat_id = os.getenv('BOT_CHATID')
 	percent_str = subprocess.check_output("df | grep /dev/root | awk '{print $5}'", shell=True).decode('utf-8')
-	percent_str = "Disk usage: " + percent_str
+	percent_str = "Disk usage: " + percent_str + "\n"
+	percent_str += "sample count: "
+	percent_str += str(stats['count'])
 	bot = telepot.Bot(bot_id)
 	bot.sendMessage(chat_id, percent_str)
 
@@ -92,6 +94,9 @@ class WeatherDbManager:
 	def __init__(self, client):
 		self.client_ = client
 		self.db_ = client['weather']
+		
+	def get_sample_stats(self):
+	    return self.db_.command("collstats", "samples")
 
 	def reset_city_list(self):
 		"""
@@ -177,7 +182,7 @@ def main():
 
 	if args.new_sample:
 		#db_manager.reset_city_list()
-		report_disk_usage()
+		report_disk_usage(db_manager.get_sample_stats())
 		if is_disk_full(50):
 			report_disk_fill_rate(client)
 		return
