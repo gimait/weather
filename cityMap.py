@@ -28,6 +28,21 @@ def sort_coordinates(coord):
     return [limits1, limits2]
 
 
+def get_lon_lat(city):
+    """
+    Looks for city coordinates in different formats
+    :param city: dict object describing a city
+    :return: longitude, latitude
+    """
+    if 'coordinates' in city['coord']:
+        ll = city['coord']['coordinates']
+        return ll[0], ll[1]
+    elif 'lon' in city['coord']:
+        return city['coord']['lon'], city['coord']['lat']
+    else:
+        return city['coord'][0], city['coord'][1]
+
+
 def get_cities_in_area(coordinates, json_file):
     """
     Given the coordinates of two points, finds all cities within these coordinates
@@ -38,10 +53,11 @@ def get_cities_in_area(coordinates, json_file):
     cities = []
     limits = sort_coordinates(coordinates)
     for city in json_file:
-        lon = city['coord']['lon']
-        lat = city['coord']['lat']
+        c = city.copy()
+        lon, lat = get_lon_lat(city)
         if limits[0][0] > lat > limits[0][1] and limits[1][0] > lon > limits[1][1]:
-            cities.append(city)
+            c['coord'] = {'coordinates': [lon, lat]}
+            cities.append(c)
 
     return cities
 
@@ -63,6 +79,7 @@ def main():
     client = pm.MongoClient()
     db = client['weather']
     cities = db.cities
+    cities.create_index([("coord.coordinates", pm.GEO2D)])
 
     with open(file) as f:
         cl = json.load(f)
