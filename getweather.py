@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import requests
-from multiprocessing.pool import ThreadPool
-from datetime import datetime
+import os
 import pymongo as pm
+import requests
 import subprocess
 import telepot
-import os
 import zipfile
-import re
-import json
+from datetime import datetime
+from multiprocessing.pool import ThreadPool
 
 
 class lock_file:
@@ -140,7 +138,7 @@ class WeatherDbManager:
 	def __init__(self, client):
 		self.client_ = client
 		self.db_ = client['weather']
-		
+
 	def get_sample_stats(self):
 	    return self.db_.command("collstats", "samples")
 
@@ -242,7 +240,7 @@ def main():
 		report_disk_usage()
 		return
 
-	if client.weather.command("collstats", "samples")['count'] > 200000:
+	if client.weather.command("collstats", "samples")['count'] > 20000000:
 		export_samples_to_dir(client, args.bkup_dir)
 
 	db_manager.sample_cities()
