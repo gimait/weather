@@ -69,8 +69,8 @@ def export_samples_to_dir(client, dir):
 					max_id = idx + 1
 			# Write new file in zip
 			aux_file = os.path.join(dir, "samples" + str(max_id) + ".json")
-			exec_mongoexport = subprocess.check_output("mongoexport --collection samples -d weather --out {}".format(aux_file), shell=True).decode('utf-8')
-			zip.write(aux_file)
+			exec_mongoexport = subprocess.check_output("mongoexport --collection samples -d weather --out '{}'".format(aux_file), shell=True).decode('utf-8')
+			zip.write(aux_file, os.path.basename(aux_file))
 			os.remove(aux_file)
 			client.weather.samples.delete_many({})
 
@@ -223,7 +223,7 @@ def main():
 	parser.add_argument("-b","--bkup_dir",
 						help="Address of output data file" +
 						"(where database is dumped when grows too much)",
-						default="/media/pi/WD\ Elements/samples.json")
+						default="/media/pi/WD Elements/mongodb")
 	args = parser.parse_args()
 	client = pm.MongoClient()
 	db_manager = WeatherDbManager(client)
@@ -240,7 +240,7 @@ def main():
 		report_disk_usage()
 		return
 
-	if client.weather.command("collstats", "samples")['count'] > 20000000:
+	if client.weather.command("collstats", "samples")['count'] > 200000:
 		export_samples_to_dir(client, args.bkup_dir)
 
 	db_manager.sample_cities()
