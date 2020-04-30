@@ -2,3 +2,6 @@
 venv
 weather-env
 .idea
+*.code-workspace
+*.vscode
+*__pycache__
