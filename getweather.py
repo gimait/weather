@@ -7,6 +7,27 @@ import pymongo as pm
 import subprocess
 import telepot
 import os
+import zipfile
+import re
+import json
+
+
+class lock_file:
+	"""Class creating local object to avoid launching multiple instances of the same script
+	"""
+	def __init__(self, file):
+		self.file_ = file
+		self.got_lock = False
+		if os.path.isfile(file):
+			raise NameError('Lock file exists')
+		else:
+			f = open(file, 'w')
+			f.write("weather lock")
+			self.got_lock = True
+
+	def __del__(self):
+		if self.got_lock:
+			os.remove(self.file_)
 
 
 def get_disk_usage():
@@ -29,6 +50,31 @@ def is_disk_full(percentage=80):
 		return True if int(percent_str[:-2]) > percentage else False
 	else:
 		return False
+
+
+def export_samples_to_dir(client, dir):
+	"""
+	Saves current samples in weather.samples db to a output dir (in a compressed file), then cleans the collection
+	:param client: Mongodb client
+	:param dir: Output directory where samples will be stored.
+	"""
+	# Open zip file, check name of content
+	if os.path.isdir(dir):
+		zip_file = os.path.join(dir, 'samples_bkup.zip')
+		with zipfile.ZipFile(zip_file, 'a', zipfile.ZIP_DEFLATED) as zip:
+			# Check files in zip, they will have the shape samplesX.json
+			files = zip.namelist()
+			max_id = 0
+			for f in files:
+				idx = int(re.findall(r'\d+', f)[0])
+				if idx >= max_id:
+					max_id = idx + 1
+			# Write new file in zip
+			aux_file = os.path.join(dir, "samples" + str(max_id) + ".json")
+			exec_mongoexport = subprocess.check_output("mongoexport --collection samples -d weather --out {}".format(aux_file), shell=True).decode('utf-8')
+			zip.write(aux_file)
+			os.remove(aux_file)
+			client.weather.samples.delete_many({})
 
 
 def report_disk_fill_rate(db_client):
@@ -171,6 +217,10 @@ def main():
 	parser.add_argument("-n", "--new-sample",
 						help="A new sample will be measured",
 						action='store_true')
+	parser.add_argument("-b","--bkup_dir",
+						help="Address of output data file" +
+						"(where database is dumped when grows too much)",
+						default="/media/pi/WD\ Elements/samples.json")
 	args = parser.parse_args()
 	client = pm.MongoClient()
 	db_manager = WeatherDbManager(client)
@@ -187,8 +237,17 @@ def main():
 		report_disk_usage()
 		return
 
+	if client.weather.command("collstats", "samples")['count'] > 200000:
+		export_samples_to_dir(client, args.bkup_dir)
+
 	db_manager.sample_cities()
 
 
 if __name__ == '__main__':
-	main()
+	# Check if another instance of the script is running.
+	try:
+		lock = lock_file(".lock")
+		# Run main if get_lock works.
+		main()
+	except NameError:
+		print('lock exists, exiting')
