@@ -122,7 +122,7 @@ def get_sample_by_id(city_id):
 	"""
 	api_key = os.getenv('OWM_API_KEY')
 	url = "https://api.openweathermap.org/data/2.5/weather?id={}&units=metric&appid={}".format(city_id, api_key)
-	r = requests.get(url)
+	r = requests.get(url, timeout=20)
 	return r.json()
 
 
@@ -155,7 +155,8 @@ class WeatherDbManager:
 		:param cities: list of city ids with shape [{'id': 1}, {'id': 2}, ...].
 		"""
 		self.db_.to_check.delete_many({})
-		self.db_.to_check.insert_many(cities)
+		if len(cities) > 0:
+			self.db_.to_check.insert_many(cities)
 
 	def get_city_list(self):
 		"""
@@ -251,6 +252,9 @@ if __name__ == '__main__':
 	try:
 		lock = lock_file(".lock")
 		# Run main if get_lock works.
-		main()
+		try:
+			main()
+		except Exception as inst:
+			print(inst)
 	except NameError:
 		print('lock exists, exiting')
