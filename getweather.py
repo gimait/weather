@@ -3,6 +3,7 @@ import argparse
 import os
 import pymongo as pm
 import requests
+import re
 import subprocess
 import telepot
 import zipfile
@@ -122,8 +123,12 @@ def get_sample_by_id(city_id):
 	"""
 	api_key = os.getenv('OWM_API_KEY')
 	url = "https://api.openweathermap.org/data/2.5/weather?id={}&units=metric&appid={}".format(city_id, api_key)
-	r = requests.get(url, timeout=20)
-	return r.json()
+	try:
+		r = requests.get(url, timeout=20)
+		return r.json()
+	except:
+		return {'cod': 401}
+
 
 
 class WeatherDbManager:
@@ -207,11 +212,21 @@ class WeatherDbManager:
 
 		def sampler(city):
 			sample = get_sample_by_id(city["id"])
-			self.db_.samples.insert_one(sample)
+			if sample['cod'] is 200:
+				self.db_.samples.insert_one(sample)
+				return True
+			else:
+				return False
 
 		with ThreadPool(10) as pool:
-			pool.map(sampler, cities_to_check[0:n])
+			sampling = cities_to_check[0:n]
 			del cities_to_check[0:n]
+			success = pool.map(sampler, sampling)
+			repeat = [c for s,c in zip(success, sampling) if s is False]
+			if len(repeat) == n:
+				print("something went wrong when processing these ids, I'll ignore them next time:")
+				print(repeat)
+			cities_to_check = repeat + cities_to_check
 
 		self.update_city_to_check(cities_to_check)
 
