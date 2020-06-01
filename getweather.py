@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
 import os
 import pymongo as pm
-import requests
 import re
+import requests
 import subprocess
 import telepot
 import zipfile
-from datetime import datetime
 from multiprocessing.pool import ThreadPool
 
 
@@ -90,8 +90,8 @@ def report_disk_fill_rate(db_client):
 		first_time = collection.find_one()['dt']
 		last_time = collection.find_one({"$query": {}, "$orderby": {"_id": -1}})['dt']
 		difference = last_time-first_time
-		readable_first = datetime.utcfromtimestamp(first_time).strftime('%Y-%m-%d %H:%M:%S')
-		readable_second = datetime.utcfromtimestamp(last_time).strftime('%Y-%m-%d %H:%M:%S')
+		readable_first = datetime.datetime.utcfromtimestamp(first_time).strftime('%Y-%m-%d %H:%M:%S')
+		readable_second = datetime.datetime.utcfromtimestamp(last_time).strftime('%Y-%m-%d %H:%M:%S')
 		percent_str += '\nDisk half capacity, time since first log:'
 		percent_str += str(difference)
 		bot = telepot.Bot(bot_id)
@@ -129,6 +129,44 @@ def get_sample_by_id(city_id):
 	except:
 		return {'cod': 401}
 
+
+def get_sample_OCAPI(lat, lon):
+	"""
+	Weather request to OpenWeatherMap One Call API for a city.
+	It requests the historical data from the previous day.
+	:lat: sample latitude
+	:lon: sample longitude
+	:return: json object containing result of request.
+	"""
+	api_key = os.getenv('OWM_API_KEY')
+	dt = ( datetime.date.today() - datetime.timedelta(1) ) .strftime("%s")
+	url = "http://api.openweathermap.org/data/2.5/onecall/timemachine?lat={}&lon={}&dt={}&units=metric&appid={}".format(lat, lon, dt, api_key)
+	try:
+		r = requests.get(url, timeout=20)
+		return r.json()
+	except:
+		return {'cod': 401}
+
+
+def rearrange_OCAPI_response(city, res):
+	"""
+	Converts results of One Call API to individual sample documents.
+	:param city: json object, city description.
+	:param res: json object, response of sample request.
+	:type res: list of samples ready to be appended to database.
+	"""
+	def ocapi_to_sample(ocapi):
+		sample = ocapi
+		sample['sys'] = {
+				'country': city['country'],
+				}
+		sample['id'] = city['id']
+		return sample
+	sample_list = [ocapi_to_sample(res['current'])]
+	for s in res['hourly']:
+		sample_list += [ocapi_to_sample(s)]
+
+	return sample_list
 
 
 class WeatherDbManager:
@@ -199,7 +237,6 @@ class WeatherDbManager:
 		Checks the weather on n cities from the 'to_check' collection list.
 		and stores them in the 'samples' collection.
 		:param n: Number of cities to be checked, default is 50.
-		:return:
 		"""
 		cities_to_check = self.get_list_to_check()
 		# If there is too little entries, get the full list and set it up again
@@ -230,11 +267,31 @@ class WeatherDbManager:
 
 		self.update_city_to_check(cities_to_check)
 
+	def sample_OCAPI(self):
+		"""
+		Requests the weather from the previous day for all cities listed in cities_OneCallAPI collection.
+		"""
+		def sampler(city):
+			res = get_sample_OCAPI(city["coord"]["coordinates"][1], city["coord"]["coordinates"][0])
+			if res['cod'] is 200:
+				sample_list = rearrange_OCAPI_response(city, res)
+				self.db_.samples.insert_many(sample_list)
+				return True
+			else:
+				return False
+
+		with ThreadPool(10) as pool:
+			sampling = [x for x in self.db_cities_OneCallAPI.find()]
+			success = pool.map(sampler, sampling)
+			repeat = [c for s,c in zip(success, sampling) if s is False]
+			if len(repeat) == len(sampling):
+				print("something went wrong with last One Call API sampling.")
+
 
 def main():
 	parser = argparse.ArgumentParser()
-	parser.add_argument("-n", "--new-sample",
-						help="A new sample will be measured",
+	parser.add_argument("--one-call",
+						help="Request and store information from previous day",
 						action='store_true')
 	parser.add_argument("-b","--bkup_dir",
 						help="Address of output data file" +
@@ -244,13 +301,6 @@ def main():
 	client = pm.MongoClient()
 	db_manager = WeatherDbManager(client)
 
-	if args.new_sample:
-		#db_manager.reset_city_list()
-		report_disk_usage(db_manager.get_sample_stats())
-		if is_disk_full(50):
-			report_disk_fill_rate(client)
-		return
-
 	if is_disk_full():
 		print("disk full!")
 		report_disk_usage()
@@ -258,6 +308,11 @@ def main():
 
 	if client.weather.command("collstats", "samples")['count'] > 200000:
 		export_samples_to_dir(client, args.bkup_dir)
+
+	if args.one_call:
+		report_disk_usage(db_manager.get_sample_stats())
+		db_manager.sample_OCAPI()
+		return
 
 	db_manager.sample_cities()
 
