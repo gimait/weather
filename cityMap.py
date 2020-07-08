@@ -4,6 +4,10 @@ import argparse
 import pymongo as pm
 import random
 
+# TODO: Change this so that you can give a list of cities as argument to the script.
+# The intention is that given a max number of cities, the script will sample evenly the 
+# n weather points (cities) closest to the given cities, instead of being given an area 
+# to search.
 asturias = ((43.67, -7.26), (42.87, -4.49))
 sydney = ((-32.472695, 150.222610), (-35.056980, 152.584333))
 world = ((90, -180), (-90, 180))
