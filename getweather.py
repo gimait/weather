@@ -296,7 +296,7 @@ def main():
 	parser.add_argument("-b","--bkup_dir",
 						help="Address of output data file" +
 						"(where database is dumped when grows too much)",
-						default="/media/pi/WD Elements/mongodb")
+						default="/media/elements/mongodb")
 	args = parser.parse_args()
 	client = pm.MongoClient()
 	db_manager = WeatherDbManager(client)
