@@ -255,6 +255,7 @@ class WeatherDbManager:
                 self.db_.samples.insert_one(sample)
                 return True
             else:
+                print(sample)
                 return False
 
         with ThreadPool(10) as pool:
@@ -263,7 +264,7 @@ class WeatherDbManager:
             success = pool.map(sampler, sampling)
             repeat = [c for s, c in zip(success, sampling) if s is False]
             if len(repeat) == n:
-                print("something went wrong when processing these ids, I'll ignore them next time:")
+                print("Something went wrong when processing these ids, I'll ignore them next time:")
                 print(repeat)
             cities_to_check = repeat + cities_to_check
 
