@@ -284,7 +284,7 @@ class WeatherDbManager:
                 return False
 
         with ThreadPool(10) as pool:
-            sampling = [x for x in self.db_cities_OneCallAPI.find()]
+            sampling = [x for x in self.db_.cities_OneCallAPI.find()]
             success = pool.map(sampler, sampling)
             repeat = [c for s, c in zip(success, sampling) if s is False]
             if len(repeat) == len(sampling):
