@@ -297,17 +297,19 @@ class WeatherDbManager:
 
 def main():
     parser = argparse.ArgumentParser()
+
     parser.add_argument("--one-call",
                         help="Request and store information from previous day",
                         action='store_true')
     parser.add_argument("-b", "--bkup_dir",
-                        help="Address of output data file" +
-                        "(where database is dumped when grows too much)",
+                        help="Address of output data file (where database is dumped when grows too much)",
                         default="/media/elements/mongodb")
+    parser.add_argument("-d", "--debug", action='store_true')
+
     args = parser.parse_args()
 
     logging.basicConfig(format="%(asctime)s:%(levelname)s:\033[32m%(name)s\033[0m: %(message)s",
-                        level=logging.DEBUG,
+                        level=logging.DEBUG if args.debug else logging.INFO,
                         filename="/logs/weather_{}.log".format("OneCall" if args.one_call else "sample"),
                         filemode="a")
 
