@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import logging
 import os
 import pymongo as pm
 import re
@@ -114,6 +115,8 @@ def report_disk_usage(stats):
     percent_str += str(stats['count'])
     bot = telepot.Bot(bot_id)
     bot.sendMessage(chat_id, percent_str)
+    logging.log(logging.INFO, "Disk full!")
+    logging.log(logging.INFO, percent_str)
 
 
 def get_sample_by_id(city_id):
@@ -183,6 +186,7 @@ class WeatherDbManager:
     def __init__(self, client):
         self.client_ = client
         self.db_ = client['weather']
+        self.logger = logging.getLogger(name=__name__)
 
     def get_sample_stats(self):
         return self.db_.command("collstats", "samples")
@@ -255,7 +259,7 @@ class WeatherDbManager:
                 self.db_.samples.insert_one(sample)
                 return True
             else:
-                print(sample)
+                self.logger.error(sample)
                 return False
 
         with ThreadPool(10) as pool:
@@ -264,8 +268,8 @@ class WeatherDbManager:
             success = pool.map(sampler, sampling)
             repeat = [c for s, c in zip(success, sampling) if s is False]
             if len(repeat) == n:
-                print("Something went wrong when processing these ids, I'll ignore them next time:")
-                print(repeat)
+                self.logger.error("Something went wrong when processing these ids, I'll ignore them next time:")
+                self.logger.error(repeat)
             cities_to_check = repeat + cities_to_check
 
         self.update_city_to_check(cities_to_check)
@@ -288,7 +292,7 @@ class WeatherDbManager:
             success = pool.map(sampler, sampling)
             repeat = [c for s, c in zip(success, sampling) if s is False]
             if len(repeat) == len(sampling):
-                print("something went wrong with last One Call API sampling.")
+                self.logger.error("Something went wrong with last One Call API sampling.")
 
 
 def main():
@@ -301,11 +305,16 @@ def main():
                         "(where database is dumped when grows too much)",
                         default="/media/elements/mongodb")
     args = parser.parse_args()
+
+    logging.basicConfig(format="%(asctime)s:%(levelname)s:\033[32m%(name)s\033[0m: %(message)s",
+                        level=logging.DEBUG,
+                        filename="/logs/weather_{}.log".format("OneCall" if args.one_call else "sample"),
+                        filemode="a")
+
     client = pm.MongoClient()
     db_manager = WeatherDbManager(client)
 
     if is_disk_full():
-        print("disk full!")
         report_disk_usage()
         return
 
